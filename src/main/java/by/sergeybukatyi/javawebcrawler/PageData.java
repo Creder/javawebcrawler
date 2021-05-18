@@ -26,10 +26,10 @@ public class PageData {
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
-    sb.append(url+" ");
+    sb.append(url+",");
     for (Map.Entry<String, Integer> mapElement : results.entrySet())
     {
-      sb.append(mapElement.getValue()+" ");
+      sb.append(mapElement.getValue()+",");
     }
     sb.replace(sb.length()-1, sb.length(), "\n");
     return sb.toString();

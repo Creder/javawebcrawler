@@ -1,9 +1,12 @@
 package by.sergeybukatyi.javawebcrawler;
 
 import com.trigonic.jrobotx.RobotExclusion;
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -20,8 +23,6 @@ import org.springframework.scheduling.annotation.Async;
 public class Crawler {
 
   private static final Logger logger = LoggerFactory.getLogger("Log");
-
-  private boolean exit = false;
   private final List<PageData> pageDataList = new ArrayList<>();
   private final List<String> links = new LinkedList<>();
   private final Set<String> visitedPages = new TreeSet<>();
@@ -30,10 +31,8 @@ public class Crawler {
   private final int maxPages;
   private final int deep;
   private final String startPage;
-
-
-
   private final String[] words;
+  private boolean exit = false;
   private int counterPages = 0;
 
   public Crawler(int maxPages, int deep, String[] words, String startPage) {
@@ -70,7 +69,7 @@ public class Crawler {
     return pageData;
   }
 
-  public List<PageData> start() {
+  public boolean start() {
     int currentDeep = 0;
 
     ArrayList<AnotherThread> threads = new ArrayList<>();
@@ -98,19 +97,70 @@ public class Crawler {
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
-    }
-    for (PageData data : pageDataList) {
-      HashMap<String, Integer> map = data.getResults();
-      for (Map.Entry<String, Integer> mapElement : map.entrySet()) {
-        totalResult.put(mapElement.getKey(),
-            totalResult.get(mapElement.getKey()) + mapElement.getValue());
+      for (PageData data : pageDataList) {
+        HashMap<String, Integer> map = data.getResults();
+        for (Map.Entry<String, Integer> mapElement : map.entrySet()) {
+          totalResult.put(mapElement.getKey(),
+              totalResult.get(mapElement.getKey()) + data.getResults().get(mapElement.getKey()));
+        }
       }
+      pageData = new PageData();
+      pageData.setUrl("_TOTAL_");
+      pageData.setResults(totalResult);
+      pageDataList.add(pageData);
+
+      createCsvAllData(pageDataList);
+      createCsvTop10(pageDataList);
+      return true;
+    } else {
+      return false;
     }
-    pageData = new PageData();
-    pageData.setUrl("_TOTAL_");
-    pageData.setResults(totalResult);
-    pageDataList.add(pageData);
-    return pageDataList;
+  }
+
+  private void createCsvTop10(List<PageData> pageDataList) {
+    File top = new File("top-10.csv");
+    try (FileWriter fileWriter = new FileWriter(top);) {
+      Collections.sort(pageDataList, Collections.reverseOrder(new DataComparator()));
+      StringBuilder sb = new StringBuilder();
+      if (!top.exists()) {
+        top.createNewFile();
+      }
+      sb.append("url,");
+      for (Map.Entry<String, Integer> mapElement : pageDataList.get(0).getResults().entrySet()) {
+        sb.append(mapElement.getKey() + ",");
+      }
+      sb.replace(sb.length() - 1, sb.length(), "\n");
+      for (int i = 1; i < 11; i++) {
+        sb.append(pageDataList.get(i).toString());
+      }
+      fileWriter.write(sb.toString());
+      fileWriter.flush();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
+
+  private void createCsvAllData(List<PageData> pageDataList) {
+    File csvFile = new File("all_results.csv");
+    try (FileWriter fileWriter = new FileWriter(csvFile)) {
+      if (!csvFile.exists()) {
+        csvFile.createNewFile();
+      }
+      StringBuilder sb = new StringBuilder();
+      sb.append("url,");
+      for (Map.Entry<String, Integer> mapElement : pageDataList.get(0).getResults().entrySet()) {
+        sb.append(mapElement.getKey() + ",");
+      }
+      sb.replace(sb.length() - 1, sb.length(), "\n");
+      for (PageData data : pageDataList) {
+        sb.append(data.toString());
+      }
+      fileWriter.write(sb.toString());
+      fileWriter.flush();
+
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
   }
 
   private void createThreads(ArrayList<AnotherThread> threads) {
@@ -172,7 +222,8 @@ public class Crawler {
     Document document;
     try {
       URL url = new URL(pageUrl);
-      if (robotExclusion.allows(url, "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/535.1 (KHTML, like Gecko) Chrome/13.0.782.112 Safari/535.1")) {
+      if (robotExclusion.allows(url,
+          "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/535.1 (KHTML, like Gecko) Chrome/13.0.782.112 Safari/535.1")) {
         if (!visitedPages.contains(pageUrl)) {
           Connection connection = Jsoup.connect(pageUrl);
           document = connection.get();
