@@ -118,7 +118,7 @@ public class Crawler {
   }
 
   private void createCsvTop10(List<PageData> pageDataList) {
-    File top = new File("top-10.csv");
+    File top = new File("temp/top-10.csv");
     try (FileWriter fileWriter = new FileWriter(top);) {
       Collections.sort(pageDataList, Collections.reverseOrder(new DataComparator()));
       StringBuilder sb = new StringBuilder();
@@ -141,7 +141,7 @@ public class Crawler {
   }
 
   private void createCsvAllData(List<PageData> pageDataList) {
-    File csvFile = new File("all_results.csv");
+    File csvFile = new File("temp/all_results.csv");
     try (FileWriter fileWriter = new FileWriter(csvFile)) {
       if (!csvFile.exists()) {
         csvFile.createNewFile();
